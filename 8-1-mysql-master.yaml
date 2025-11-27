@@ -1,0 +1,152 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-master-config
+  namespace: nextcloud
+data:
+  my.cnf: |
+    [mysqld]
+    server-id=1
+    log_bin=mysql-bin
+    binlog_format=ROW
+    expire_logs_days=3
+    max_binlog_size=50M
+    innodb_buffer_pool_size=512M  # 从 256M 增加到 512M
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+    default-storage-engine=INNODB
+    skip-name-resolve
+    max_connections=100
+    bind-address=0.0.0.0
+    innodb_flush_log_at_trx_commit=2
+    sync_binlog=0
+    skip-host-cache
+    skip-slave-start
+    
+    # 增加排序缓冲区大小
+    sort_buffer_size=2M
+    read_buffer_size=2M
+    read_rnd_buffer_size=2M
+    join_buffer_size=2M
+    
+    # 临时表设置
+    tmp_table_size=64M
+    max_heap_table_size=64M
+    
+    [client]
+    default-character-set=utf8mb4
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-master
+  namespace: nextcloud
+spec:
+  serviceName: mysql-master
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-master
+  template:
+    metadata:
+      labels:
+        app: mysql-master
+    spec:
+      initContainers:
+      - name: fix-data-permissions
+        image: busybox:1.35
+        command:
+        - sh
+        - -c
+        - |
+          echo "Checking MySQL data directory..."
+          ls -la /var/lib/mysql/
+          if [ -d "/var/lib/mysql/mysql" ]; then
+            echo "Data directory already exists, ensuring permissions..."
+            chown -R 999:999 /var/lib/mysql
+          else
+            echo "Data directory is empty, will be initialized by MySQL"
+          fi
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "password"
+        - name: MYSQL_DATABASE
+          value: "nextcloud"
+        - name: MYSQL_USER
+          value: "nextcloud"
+        - name: MYSQL_PASSWORD
+          value: "password"
+        - name: MYSQL_INITDB_SKIP_TZINFO
+          value: "1"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+        - name: config
+          mountPath: /etc/mysql/conf.d/my.cnf
+          subPath: my.cnf
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "1Gi"
+          limits:
+            cpu: "500m"
+            memory: "2Gi"
+        # 改进的健康检查
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - mysqladmin -h 127.0.0.1 -uroot -ppassword ping
+          failureThreshold: 30
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: 
+            - sh
+            - -c
+            - mysqladmin -h 127.0.0.1 -uroot -ppassword ping
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command: 
+            - sh
+            - -c
+            - mysql -h 127.0.0.1 -uroot -ppassword -e "SELECT 1"
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: config
+        configMap:
+          name: mysql-master-config
+      - name: data
+        persistentVolumeClaim:
+          claimName: mysql-master-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-master
+  namespace: nextcloud
+spec:
+  clusterIP: None  # Headless 服务
+  ports:
+  - port: 3306
+    targetPort: 3306
+    name: mysql
+  selector:
+    app: mysql-master
+  publishNotReadyAddresses: true
