@@ -31,7 +31,6 @@ spec:
       - image: dai30.test.com/k8s/nextcloud:latest
         name: nextcloud
         imagePullPolicy: IfNotPresent
-        # 只保留基本环境变量，去掉数据库和Redis配置
         env:
         - name: TZ
           value: Asia/Shanghai
@@ -62,3 +61,6 @@ spec:
           limits:
             cpu: "1000m"
             memory: "1Gi"
+# 该yaml文件应nextcloud 初始化时间约10-20分钟，暂未进行设置相应的健康检查
+# 你可以通过命令查看pod输出日志判断是否启动成功
+# 启动成功之后通过ui界面手动初始化 
