@@ -588,7 +588,7 @@ if [[ "$CURRENT_CHECKPOINT" == "nextcloud_app_deployed" ]]; then
     echo "  数据库密码: password"
     echo ""
     echo "Redis配置 (可选，提升性能):"
-    echo "  主机: redis-single"
+    echo "  主机: redis"
     echo "  端口: 6379"
     echo "  密码: password"
     echo ""
