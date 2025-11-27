@@ -12,7 +12,8 @@ nextcloud   NodePort   10.100.178.30   <none>        80:32048/TCP   3d19h
 
 ###### 若出现报错：
 
-`cURL error 56: OpenSSL SSL_read: Connection reset by peer, errno 104 (see https://curl.haxx.se/libcurl/c/libcurl-errors.html) for https://github.com/ONLYOFFICE/onlyoffice-nextcloud/releases/download/v7.4.8/onlyoffice.tar.gz` 尝试前往nextcloud pod中手动进行安装，步骤如下：
+`cURL error 56: OpenSSL SSL_read: Connection reset by peer, errno 104 (see https://curl.haxx.se/libcurl/c/libcurl-errors.html) for https://github.com/ONLYOFFICE/onlyoffice-nextcloud/releases/download/v7.4.8/onlyoffice.tar.gz` 
+尝试前往nextcloud pod中手动进行安装，步骤如下：
 **手动进入nextcloud pod中下载安装onlyoffice**
 
 ```
