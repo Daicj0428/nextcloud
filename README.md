@@ -52,7 +52,8 @@
 ├── 10-4-nextcloud-service.yaml   # Nextcloud 服务
 ├── deploy.sh                     # 自动化部署脚本
 ├── check-deploy-status.sh        # 部署状态检查脚本
-└── reset-deploy.sh               # 重置部署脚本
+├── reset-deploy.sh               # 重置部署脚本
+└── redis单点配置.md              # Redis手动配置文档 
 ```
 
 
