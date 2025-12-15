@@ -466,26 +466,37 @@ fi
 if [[ "$CURRENT_CHECKPOINT" == "redis_deployed" ]]; then
     log_step "步骤13: 等待Redis启动..."
     
+    # 方法1: 等待Deployment就绪
     if wait_for_resource deployment redis $NAMESPACE 300; then
         log_info "Redis 已就绪"
         checkpoint "redis_ready"
         CURRENT_CHECKPOINT="redis_ready"
     else
-        log_error "Redis 启动失败"
-        # 获取Redis Pod日志
+        # 方法2: 如果等待Deployment失败，检查Pod状态
+        log_warn "Deployment等待超时，检查Pod状态..."
         REDIS_POD=$(kubectl get pod -n $NAMESPACE -l app=redis -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+        
         if [[ -n "$REDIS_POD" ]]; then
-            get_pod_logs $REDIS_POD
+            pod_status=$(check_pod_status $REDIS_POD)
+            if [[ "$pod_status" == "Running" ]]; then
+                log_info "Redis Pod 正在运行，继续执行..."
+                checkpoint "redis_ready"
+                CURRENT_CHECKPOINT="redis_ready"
+            else
+                log_error "Redis Pod 状态为: $pod_status"
+                get_pod_logs $REDIS_POD
+                exit 1
+            fi
+        else
+            log_error "未找到Redis Pod"
+            exit 1
         fi
-        exit 1
     fi
-		checkpoint "redis_initialized"
-		CURRENT_CHECKPOINT="redis_initialized"
 fi
 
 # 步骤14: 部署Nextcloud配置
-if [[ "$CURRENT_CHECKPOINT" == "redis_initialized" ]]; then
-    log_step "步骤15: 部署Nextcloud配置"
+if [[ "$CURRENT_CHECKPOINT" == "redis_ready" ]]; then
+    log_step "步骤14: 部署Nextcloud配置"
     
     # 部署ConfigMap
     kubectl apply -f 10-2-nextcloud-cm.yaml
@@ -506,7 +517,7 @@ fi
 
 # 步骤15: 部署Nextcloud应用
 if [[ "$CURRENT_CHECKPOINT" == "nextcloud_config_applied" ]]; then
-    log_step "步骤16: 部署Nextcloud应用"
+    log_step "步骤15: 部署Nextcloud应用"
     
     log_info "部署Nextcloud..."
     kubectl apply -f 10-3-nextcloud-deployment.yaml -f 10-4-nextcloud-service.yaml
@@ -522,7 +533,7 @@ fi
 
 # 步骤16: 等待Nextcloud启动
 if [[ "$CURRENT_CHECKPOINT" == "nextcloud_app_deployed" ]]; then
-    log_step "步骤17: 等待Nextcloud Pod启动..."
+    log_step "步骤15: 等待Nextcloud Pod启动..."
     
     # 等待Deployment创建Pod
     sleep 20
