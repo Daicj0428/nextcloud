@@ -15,11 +15,9 @@ spec:
       labels:
         app: onlyoffice-document-server
     spec:
-      # 移除 initContainer，因为权限问题需要在主容器中处理
       containers:
       - name: onlyoffice-document-server
         image: onlyoffice/documentserver:7.4.1
-        # 使用 root 用户运行以解决权限问题
         securityContext:
           runAsUser: 0
           runAsGroup: 0
@@ -33,7 +31,6 @@ spec:
           value: "true"
         - name: JWT_SECRET
           value: "onlyoffice-secret-key-2024"
-        # 添加环境变量以帮助调试
         - name: NODE_ENV
           value: "production"
         resources:
